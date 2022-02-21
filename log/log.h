@@ -17,13 +17,15 @@ public:
     static Log *get_instance()
     {
         static Log instance;
-        return &instance;
+        return &instance; 
     }
 
+    // 异步写日志共有方法, 调用私有方法async_write_log
     static void *flush_log_thread(void *args)
     {
         Log::get_instance()->async_write_log();
     }
+
     //可选择的参数有日志文件、日志缓冲区大小、最大行数以及最长日志条队列
     bool init(const char *file_name, int close_log, int log_buf_size = 8192, int split_lines = 5000000, int max_queue_size = 0);
 
@@ -32,15 +34,16 @@ public:
     void flush(void);
 
 private:
-    Log();
-    virtual ~Log();
+    Log(); // 构造函数声明成私有的是单例模式
+    virtual ~Log(); 
     void *async_write_log()
     {
         string single_log;
-        //从阻塞队列中取出一个日志string，写入文件
-        while (m_log_queue->pop(single_log))
+        //从阻塞队列中取出一个日志string，写入文件，弹出的文件是single_log
+        while (m_log_queue->pop(single_log)) 
         {
             m_mutex.lock();
+            // 将single_log中的内容写入到m_fp中
             fputs(single_log.c_str(), m_fp);
             m_mutex.unlock();
         }
@@ -61,6 +64,8 @@ private:
     int m_close_log; //关闭日志
 };
 
+
+// 这里其实定义的就是四种写入方法的宏定义, 直接调用就可以往日志中写入对应的内容
 #define LOG_DEBUG(format, ...) if(0 == m_close_log) {Log::get_instance()->write_log(0, format, ##__VA_ARGS__); Log::get_instance()->flush();}
 #define LOG_INFO(format, ...) if(0 == m_close_log) {Log::get_instance()->write_log(1, format, ##__VA_ARGS__); Log::get_instance()->flush();}
 #define LOG_WARN(format, ...) if(0 == m_close_log) {Log::get_instance()->write_log(2, format, ##__VA_ARGS__); Log::get_instance()->flush();}

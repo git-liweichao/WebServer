@@ -19,20 +19,21 @@ Log::~Log()
         fclose(m_fp);
     }
 }
+
 //异步需要设置阻塞队列的长度，同步不需要设置
 bool Log::init(const char *file_name, int close_log, int log_buf_size, int split_lines, int max_queue_size)
 {
     //如果设置了max_queue_size,则设置为异步
     if (max_queue_size >= 1)
     {
-        m_is_async = true;
+        m_is_async = true; // 异步标志位设置成true
         m_log_queue = new block_queue<string>(max_queue_size);
         pthread_t tid;
         //flush_log_thread为回调函数,这里表示创建线程异步写日志
         pthread_create(&tid, NULL, flush_log_thread, NULL);
     }
     
-    m_close_log = close_log;
+    m_close_log = close_log; // 这里是0表示的是不关闭日志
     m_log_buf_size = log_buf_size;
     m_buf = new char[m_log_buf_size];
     memset(m_buf, '\0', m_log_buf_size);
@@ -42,8 +43,9 @@ bool Log::init(const char *file_name, int close_log, int log_buf_size, int split
     struct tm *sys_tm = localtime(&t);
     struct tm my_tm = *sys_tm;
 
- 
-    const char *p = strrchr(file_name, '/');
+    // strrchr返回字符串中最后一次出现后面字符的位置
+    // eg: "./ServerLog"
+    const char *p = strrchr(file_name, '/'); 
     char log_full_name[256] = {0};
 
     if (p == NULL)
@@ -52,13 +54,15 @@ bool Log::init(const char *file_name, int close_log, int log_buf_size, int split
     }
     else
     {
-        strcpy(log_name, p + 1);
-        strncpy(dir_name, file_name, p - file_name + 1);
+        strcpy(log_name, p + 1); // 这里复制为ServerLog
+        strncpy(dir_name, file_name, p - file_name + 1); // 这里复制的是./
+        // 分别是目标, 字节数, 格式化
         snprintf(log_full_name, 255, "%s%d_%02d_%02d_%s", dir_name, my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday, log_name);
     }
 
     m_today = my_tm.tm_mday;
     
+    // 以追加的方式打开, 不存在的话就创建
     m_fp = fopen(log_full_name, "a");
     if (m_fp == NULL)
     {
@@ -68,12 +72,16 @@ bool Log::init(const char *file_name, int close_log, int log_buf_size, int split
     return true;
 }
 
+/*
+* 日志写入相关函数
+*/
 void Log::write_log(int level, const char *format, ...)
 {
+    // timeval中的第一个参数是秒, 第二个参数是毫秒
     struct timeval now = {0, 0};
     gettimeofday(&now, NULL);
     time_t t = now.tv_sec;
-    struct tm *sys_tm = localtime(&t);
+    struct tm *sys_tm = localtime(&t); // 这里只是将t转换成localtime的形式
     struct tm my_tm = *sys_tm;
     char s[16] = {0};
     switch (level)
@@ -94,11 +102,13 @@ void Log::write_log(int level, const char *format, ...)
         strcpy(s, "[info]:");
         break;
     }
+
     //写入一个log，对m_count++, m_split_lines最大行数
     m_mutex.lock();
+    // m_count表示的是现有的行数
     m_count++;
 
-    if (m_today != my_tm.tm_mday || m_count % m_split_lines == 0) //everyday log
+    if (m_today != my_tm.tm_mday || m_count % m_split_lines == 0) //everyday log 且不超过最大行数的限制
     {
         
         char new_log[256] = {0};
@@ -108,6 +118,7 @@ void Log::write_log(int level, const char *format, ...)
        
         snprintf(tail, 16, "%d_%02d_%02d_", my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday);
        
+        // 注意输入的if条件
         if (m_today != my_tm.tm_mday)
         {
             snprintf(new_log, 255, "%s%s%s", dir_name, tail, log_name);
@@ -116,6 +127,7 @@ void Log::write_log(int level, const char *format, ...)
         }
         else
         {
+            // 这里的情况表示的是超过了最大行数的限制, 在最后加上特定的标志
             snprintf(new_log, 255, "%s%s%s.%lld", dir_name, tail, log_name, m_count / m_split_lines);
         }
         m_fp = fopen(new_log, "a");
@@ -123,8 +135,8 @@ void Log::write_log(int level, const char *format, ...)
  
     m_mutex.unlock();
 
-    va_list valst;
-    va_start(valst, format);
+    va_list valst; // 定义一个可变参数列表变量
+    va_start(valst, format);  // 第二个表示要获取的类型
 
     string log_str;
     m_mutex.lock();
@@ -141,12 +153,14 @@ void Log::write_log(int level, const char *format, ...)
 
     m_mutex.unlock();
 
+    // 异步模式且队列不为满的话需要压入到阻塞队列中
     if (m_is_async && !m_log_queue->full())
     {
         m_log_queue->push(log_str);
     }
     else
     {
+        // 同步模式直接加锁, 然后写入日志内容
         m_mutex.lock();
         fputs(log_str.c_str(), m_fp);
         m_mutex.unlock();

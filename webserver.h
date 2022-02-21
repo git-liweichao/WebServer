@@ -29,13 +29,13 @@ public:
               int log_write , int opt_linger, int trigmode, int sql_num,
               int thread_num, int close_log, int actor_model);
 
-    void thread_pool();
-    void sql_pool();
-    void log_write();
+    void thread_pool(); // 线程池
+    void sql_pool(); // sql连接池
+    void log_write(); // 日志写入
     void trig_mode();
     void eventListen();
     void eventLoop();
-    void timer(int connfd, struct sockaddr_in client_address);
+    void timer(int connfd, struct sockaddr_in client_address); // 定时器
     void adjust_timer(util_timer *timer);
     void deal_timer(util_timer *timer, int sockfd);
     bool dealclinetdata();

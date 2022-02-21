@@ -5,6 +5,10 @@
 #include <pthread.h>
 #include <semaphore.h>
 
+
+/***************************
+* 对信号量进行封装
+***************************/
 class sem
 {
 public:
@@ -15,6 +19,7 @@ public:
             throw std::exception();
         }
     }
+
     sem(int num)
     {
         if (sem_init(&m_sem, 0, num) != 0)
@@ -22,22 +27,32 @@ public:
             throw std::exception();
         }
     }
+
     ~sem()
     {
         sem_destroy(&m_sem);
     }
+
     bool wait()
     {
+        // 信号量减1, <0的话阻塞, 否则继续运行
         return sem_wait(&m_sem) == 0;
     }
+
     bool post()
     {
+        // 信号量增1，<=0的话就唤醒阻塞队列中的一个任务，否则继续
         return sem_post(&m_sem) == 0;
     }
 
 private:
     sem_t m_sem;
 };
+
+
+/***************************
+* 对锁进行封装
+***************************/
 class locker
 {
 public:
@@ -48,18 +63,22 @@ public:
             throw std::exception();
         }
     }
+
     ~locker()
     {
         pthread_mutex_destroy(&m_mutex);
     }
+
     bool lock()
     {
         return pthread_mutex_lock(&m_mutex) == 0;
     }
+
     bool unlock()
     {
         return pthread_mutex_unlock(&m_mutex) == 0;
     }
+
     pthread_mutex_t *get()
     {
         return &m_mutex;
@@ -68,6 +87,11 @@ public:
 private:
     pthread_mutex_t m_mutex;
 };
+
+
+/***************************
+* 对条件变量进行封装
+***************************/
 class cond
 {
 public:
@@ -79,10 +103,12 @@ public:
             throw std::exception();
         }
     }
+
     ~cond()
     {
         pthread_cond_destroy(&m_cond);
     }
+
     bool wait(pthread_mutex_t *m_mutex)
     {
         int ret = 0;
@@ -91,6 +117,7 @@ public:
         //pthread_mutex_unlock(&m_mutex);
         return ret == 0;
     }
+
     bool timewait(pthread_mutex_t *m_mutex, struct timespec t)
     {
         int ret = 0;
@@ -99,12 +126,16 @@ public:
         //pthread_mutex_unlock(&m_mutex);
         return ret == 0;
     }
+
     bool signal()
     {
+        // 唤醒单一的
         return pthread_cond_signal(&m_cond) == 0;
     }
+
     bool broadcast()
     {
+        // 唤醒所有的
         return pthread_cond_broadcast(&m_cond) == 0;
     }
 

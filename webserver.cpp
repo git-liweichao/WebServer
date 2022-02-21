@@ -76,10 +76,12 @@ void WebServer::log_write()
 {
     if (0 == m_close_log)
     {
-        //初始化日志
+        // 初始化日志, 有两种模式
+        // 1表示的是异步, 0表示的是同步
         if (1 == m_log_write)
             Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 800);
         else
+            // 同步模式的阻塞队列大小为0
             Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 0);
     }
 }
