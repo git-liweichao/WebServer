@@ -34,7 +34,7 @@ private:
 	int m_CurConn;  //当前已使用的连接数
 	int m_FreeConn; //当前空闲的连接数
 	locker lock;
-	list<MYSQL *> connList; //连接池
+	list<MYSQL *> connList; //连接池，双向链表结构
 	sem reserve;
 
 public:
@@ -46,9 +46,10 @@ public:
 	int m_close_log;	//日志开关
 };
 
-class connectionRAII{
 
+class connectionRAII{
 public:
+    // 对传入的参数进行操作
 	connectionRAII(MYSQL **con, connection_pool *connPool);
 	~connectionRAII();
 	
