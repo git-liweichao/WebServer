@@ -48,7 +48,7 @@ public:
     ~block_queue()
     {
         m_mutex.lock();
-        if (m_array != NULL) // 释放堆上的空间
+        if (m_array != NULL) // 释放堆上的数组空间
             delete [] m_array;
 
         m_mutex.unlock();
@@ -115,7 +115,7 @@ public:
     {
         int tmp = 0;
 
-        m_mutex.lock();
+        m_mutex.lock(); // 访问共享变量的话都需要进行加锁操作
         tmp = m_size;
 
         m_mutex.unlock();
@@ -139,7 +139,6 @@ public:
     //若当前没有线程等待条件变量,则唤醒无意义
     bool push(const T &item)
     {
-
         m_mutex.lock();
         if (m_size >= m_max_size)
         {
@@ -159,17 +158,20 @@ public:
         return true;
     }
 
-    //pop时,如果当前队列没有元素,将会等待条件变量
+    //pop时, 如果当前队列没有元素, 将会等待条件变量
     bool pop(T &item)
     {
 
         m_mutex.lock();
-        while (m_size <= 0)
+        while (m_size <= 0) // 特别注意这里的while使用，如果有多个消费者的话需要用while
         {
-            if (!m_cond.wait(m_mutex.get()))
+            if (!m_cond.wait(m_mutex.get())) // 可能多个线程获取得到锁，需要判断资源是否还有
             {
+                // 条件变量获得锁后会立马加锁
+                // 这里面其实还有加锁需要处理的相关逻辑
+
                 m_mutex.unlock();
-                return false;
+                return false; // 异常情况没有获取成功的话需要返回false
             }
         }
 
@@ -193,7 +195,7 @@ public:
         {
             t.tv_sec = now.tv_sec + ms_timeout / 1000;
             t.tv_nsec = (ms_timeout % 1000) * 1000;
-            if (!m_cond.timewait(m_mutex.get(), t))
+            if (!m_cond.timewait(m_mutex.get(), t)) // 等待一定的时间获取(类似消费者)，如果获取不到的话就直接退出
             {
                 m_mutex.unlock();
                 return false;

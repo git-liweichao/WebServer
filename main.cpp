@@ -22,7 +22,8 @@ int main(int argc, char *argv[])
     //日志
     server.log_write();
 
-    //数据库
+    //数据库 
+    // 主要包括了：将用户名和密码存储到了map中...
     server.sql_pool();
 
     //线程池

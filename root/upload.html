@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <title>WebServer</title>
+    </head>
+    <body>
+    <br/>
+    <br/>
+    <div align="center"><font size="5"> <strong>请选择文件然后上传</strong></font></div>
+	<br/>
+        <div align="center">
+        <form action="http://192.168.1.128:9000/cgi-bin/upload.cgi"
+        method="post" enctype="multipart/form-data">
+            <label for="file">文件名：</label>
+            <input name="uploadfile" type="file" id="file"/>
+            <br />
+            <input type="submit" name="submit" value="上传" />
+        </form>   
+        </div>    
+    </body>
+</html>

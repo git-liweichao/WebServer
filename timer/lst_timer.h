@@ -24,44 +24,47 @@
 #include <time.h>
 #include "../log/log.h"
 
-class util_timer;
+class util_timer; // 前向声明，因为client_data中需要用到
 
 struct client_data
 {
-    sockaddr_in address;
-    int sockfd;
-    util_timer *timer;
+    sockaddr_in address; // 客户端地址
+    int sockfd; // 客户端socket描述符
+    util_timer *timer; // 定时器，所以需要前向声明
 };
 
+// client中存储的定时器类
 class util_timer
 {
 public:
     util_timer() : prev(NULL), next(NULL) {}
 
 public:
-    time_t expire;
+    time_t expire; // 超时时间
     
-    void (* cb_func)(client_data *);
-    client_data *user_data;
-    util_timer *prev;
+    void (* cb_func)(client_data *); // 回调函数
+    client_data *user_data; // 定时器对应的连接资源
+    util_timer *prev; // 双向链表中的前向和后向
     util_timer *next;
 };
 
+// 定时器容器类
 class sort_timer_lst
 {
 public:
     sort_timer_lst();
     ~sort_timer_lst();
 
-    void add_timer(util_timer *timer);
-    void adjust_timer(util_timer *timer);
-    void del_timer(util_timer *timer);
-    void tick();
+    void add_timer(util_timer *timer); // 添加定时器
+    void adjust_timer(util_timer *timer); // 调整定时器
+    void del_timer(util_timer *timer); // 删除定时器
+    void tick(); // 按照规定的事件对定时器容器中进行删除
 
 private:
+    // 被公有的add_timer和adjust_timer调用，调整链表的内部节点
     void add_timer(util_timer *timer, util_timer *lst_head);
 
-    util_timer *head;
+    util_timer *head; // 头尾两个节点
     util_timer *tail;
 };
 

@@ -35,7 +35,7 @@ bool Log::init(const char *file_name, int close_log, int log_buf_size, int split
     
     m_close_log = close_log; // 这里是0表示的是不关闭日志
     m_log_buf_size = log_buf_size;
-    m_buf = new char[m_log_buf_size];
+    m_buf = new char[m_log_buf_size]; // m_buf是指针
     memset(m_buf, '\0', m_log_buf_size);
     m_split_lines = split_lines;
 
@@ -57,6 +57,7 @@ bool Log::init(const char *file_name, int close_log, int log_buf_size, int split
         strcpy(log_name, p + 1); // 这里复制为ServerLog
         strncpy(dir_name, file_name, p - file_name + 1); // 这里复制的是./
         // 分别是目标, 字节数, 格式化
+        // 得到的是完整的日志文件名称, 包括存储的位置目录
         snprintf(log_full_name, 255, "%s%d_%02d_%02d_%s", dir_name, my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday, log_name);
     }
 
@@ -108,7 +109,7 @@ void Log::write_log(int level, const char *format, ...)
     // m_count表示的是现有的行数
     m_count++;
 
-    if (m_today != my_tm.tm_mday || m_count % m_split_lines == 0) //everyday log 且不超过最大行数的限制
+    if (m_today != my_tm.tm_mday || m_count % m_split_lines == 0) //everyday log   需要日期相同且不超过最大行数的限制
     {
         
         char new_log[256] = {0};
@@ -118,7 +119,7 @@ void Log::write_log(int level, const char *format, ...)
        
         snprintf(tail, 16, "%d_%02d_%02d_", my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday);
        
-        // 注意输入的if条件
+        // 注意输入的if条件，如果时间不是今天，则创建今天的日志
         if (m_today != my_tm.tm_mday)
         {
             snprintf(new_log, 255, "%s%s%s", dir_name, tail, log_name);
@@ -130,23 +131,25 @@ void Log::write_log(int level, const char *format, ...)
             // 这里的情况表示的是超过了最大行数的限制, 在最后加上特定的标志
             snprintf(new_log, 255, "%s%s%s.%lld", dir_name, tail, log_name, m_count / m_split_lines);
         }
-        m_fp = fopen(new_log, "a");
+        m_fp = fopen(new_log, "a"); // 创建一个新的文件可以进行追加
     }
  
     m_mutex.unlock();
 
     va_list valst; // 定义一个可变参数列表变量
-    va_start(valst, format);  // 第二个表示要获取的类型
+    
+    // ap = (va_list)&v + _INTSIZEOF(v), 第二个变量是显式参数的最后一个
+    va_start(valst, format);  // 将传入的format参数赋值给valst, 格式化输出valst
 
     string log_str;
     m_mutex.lock();
 
-    //写入的具体时间内容格式
+    //写入的具体时间内容格式，返回的是写入的字节数，48表示可以写入的最大，超过截断，s表示的是类型
     int n = snprintf(m_buf, 48, "%d-%02d-%02d %02d:%02d:%02d.%06ld %s ",
                      my_tm.tm_year + 1900, my_tm.tm_mon + 1, my_tm.tm_mday,
                      my_tm.tm_hour, my_tm.tm_min, my_tm.tm_sec, now.tv_usec, s);
     
-    int m = vsnprintf(m_buf + n, m_log_buf_size - 1, format, valst);
+    int m = vsnprintf(m_buf + n, m_log_buf_size - 1, format, valst); // 返回的是写入的字节数
     m_buf[n + m] = '\n';
     m_buf[n + m + 1] = '\0';
     log_str = m_buf;
