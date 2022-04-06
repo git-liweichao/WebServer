@@ -27,6 +27,7 @@ Config::Config(){
 
     //关闭日志,默认不关闭
     close_log = 0;
+    // close_log = 1;
 
     //并发模型,默认是proactor
     actor_model = 0;
